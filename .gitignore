@@ -1,0 +1,113 @@
+############################
+# OS / Editor files
+############################
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.tmp
+*.temp
+
+############################
+# C# / .NET
+############################
+bin/
+obj/
+[Bb]uild/
+[Bb]in/
+[Oo]bj/
+*.user
+*.rsuser
+*.suo
+*.userprefs
+*.csproj.user
+*.vcxproj.user
+*.vspscc
+*.vssscc
+*.pdb
+*.cache
+*.log
+*.vspscc
+*.dbmdl
+*.bak
+*.ncb
+*.opendb
+*.ide
+*.idb
+*.ilk
+*.sdf
+*.suo
+*.tlb
+*.tlh
+*.tmp
+*.log
+*.vs/
+*.vscode/
+project.lock.json
+artifacts/
+TestResult*/
+publish/
+out/
+launchSettings.json
+
+############################
+# Python
+############################
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.pdb
+*.so
+*.egg
+*.egg-info/
+.eggs/
+dist/
+build/
+develop-eggs/
+.installed.cfg
+*.manifest
+*.spec
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# pipenv
+Pipfile.lock
+
+# pytest
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+############################
+# Jupyter Notebook
+############################
+.ipynb_checkpoints
+
+############################
+# Logs & temp
+############################
+*.log
+*.tmp
+*.temp
+
+*.wav
