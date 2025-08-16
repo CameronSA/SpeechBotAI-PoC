@@ -1,114 +1,91 @@
-import sounddevice
+from collections.abc import Iterator
 from faster_whisper import WhisperModel
-from fastapi import FastAPI, File, UploadFile
-import time
-import threading
+from ollama import ChatResponse
+import sounddevice
 import numpy as np
+from pynput import keyboard
 from ollama import chat
+import time
 
+sample_rate = 16000  # 16kHz
 
-model = WhisperModel(
+speech_to_text_model = WhisperModel(
     "small", device="cpu", compute_type="int8"
 )  # could be "medium", "large-v3"
 
-buffer_lock = threading.Lock()
-text_prompt_lock = threading.Lock()
+stop_recording_flag = False
 
 audio_buffer = bytearray()
-sample_rate = 16000  # 16kHz
-min_bytes = sample_rate * 2 * 0.5  # 0.5 seconds of audio in bytes
-
-text_prompt: str = ""
 
 
 def audio_callback(indata, frames, time, status):
+    global audio_buffer
     audio_bytes = indata.tobytes()
-    with buffer_lock:
-        audio_buffer.extend(audio_bytes)
+    audio_buffer.extend(audio_bytes)
 
 
-def transcribe(transcribe_buffer: bytearray) -> str:
+def on_press(key):
+    global stop_recording_flag
+    stop_recording_flag = True
+    return False
+
+
+def get_transcribed_mic_input() -> str:
+    input("🎤 Press Enter to start recording...")
+    print("🎤 Recording. Press Enter to stop...")
+    listener = keyboard.Listener(on_press=on_press)
+    listener.start()
+
+    with sounddevice.InputStream(
+        samplerate=sample_rate, channels=1, dtype="int16", callback=audio_callback
+    ):
+        while not stop_recording_flag:
+            pass
+
     audio_np = (
-        np.frombuffer(bytes(transcribe_buffer), dtype=np.int16).astype(np.float32)
-        / 32768.0
+        np.frombuffer(bytes(audio_buffer), dtype=np.int16).astype(np.float32) / 32768.0
     )
 
-    segments, info = model.transcribe(
+    segments, info = speech_to_text_model.transcribe(
         audio_np, beam_size=5, language="en", vad_filter=True
     )
 
     text = " ".join([seg.text for seg in segments])
 
+    audio_buffer.clear()
+
     return text
 
 
-def speech_detected():
-    if len(audio_buffer) < min_bytes:
-        return
-
-    # Convert to float and normalize
-    audio_np = (
-        np.frombuffer(bytes(audio_buffer), dtype=np.int16).astype(np.float32) / 32768.0
+def stream_ai_response(prompt: str) -> Iterator[ChatResponse]:
+    stream = chat(
+        model="phi3:mini",
+        messages=[{"role": "user", "content": prompt}],
+        stream=True,
     )
 
-    return np.max(np.abs(audio_np)) >= 0.1
+    return stream
 
 
-def get_ai_text_response():
-    global text_prompt
-    while True:
-        if text_prompt:
-            print("User prompt:", text_prompt)
-            stream = chat(
-                model="phi3:mini",
-                messages=[{"role": "user", "content": text_prompt}],
-                stream=True,
-            )
-
-            print("AI response: ", end="")
-            for chunk in stream:
-                print(chunk["message"]["content"], end="", flush=True)
-            print()
-
-            with text_prompt_lock:
-                text_prompt = ""
-
-
-def stream_microphone_input():
-    global text_prompt
-
-    # 16kHz, mono
-    with sounddevice.InputStream(
-        samplerate=16000, channels=1, dtype="int16", callback=audio_callback
-    ):
-        print("Listening for audio input...")
-        transcribe_buffer = bytearray()
-        receiving_input = False
-        last_input_time = time.time()
-
-        while True:
-            if receiving_input:
-                if time.time() - last_input_time > 0.1:
-                    text = transcribe(transcribe_buffer)
-                    if text:
-                        with text_prompt_lock:
-                            text_prompt = text
-                    transcribe_buffer.clear()
-                    receiving_input = False
-                    continue
-
-            # If audio is loud enough, treat as speech
-            if speech_detected():
-                transcribe_buffer.extend(audio_buffer)
-                receiving_input = True
-                last_input_time = time.time()
-                with buffer_lock:
-                    audio_buffer.clear()
+def play_ai_response_audio(stream: Iterator[ChatResponse]):
+    print("AI response: ", end="")
+    for chunk in stream:
+        print(chunk["message"]["content"], end="", flush=True)
+    print()
 
 
 def main():
-    threading.Thread(target=get_ai_text_response, daemon=True).start()
-    stream_microphone_input()
+    while True:
+        mic_input = get_transcribed_mic_input()
+        if mic_input:
+            print(f"Received user input: {mic_input}")
+        else:
+            print("No user input received")
+            continue
+
+        ai_response_stream = stream_ai_response(mic_input)
+        play_ai_response_audio(ai_response_stream)
+        mic_input = ""
 
 
 if __name__ == "__main__":
