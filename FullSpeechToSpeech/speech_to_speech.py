@@ -16,6 +16,8 @@ speech_to_text_model = WhisperModel(
 
 audio_buffer = bytearray()
 
+messages = []
+
 
 def audio_callback(indata, frames, time, status):
     global audio_buffer
@@ -46,9 +48,10 @@ def get_transcribed_mic_input() -> str:
 
 def stream_ai_response(prompt: str) -> Iterator[ChatResponse]:
     message = {"role": "user", "content": prompt}
+    messages.append(message)
     stream = chat(
         model="phi3:mini",
-        messages=[message],
+        messages=messages,
         stream=True,
     )
 
@@ -58,10 +61,12 @@ def stream_ai_response(prompt: str) -> Iterator[ChatResponse]:
 def play_ai_response_audio(stream: Iterator[ChatResponse], voice: PiperVoice):
     print("AI response: ", end="")
     sentence = ""
-    break_points = [".", "!", "?"]
+    total_output = ""
+    break_points = [".", "!", "?", ","]
     for chunk in stream:
         text = chunk["message"]["content"]
         sentence += text
+        total_output += text
         print(text, end="", flush=True)
         break_point = any(bp in text for bp in break_points)
         if break_point:
@@ -70,6 +75,8 @@ def play_ai_response_audio(stream: Iterator[ChatResponse], voice: PiperVoice):
                 sounddevice.play(chunk.audio_int16_array, samplerate=22050)
                 sounddevice.wait()
             sentence = ""
+
+    messages.append({"role": "assistant", "content": total_output})
 
     print()
 
