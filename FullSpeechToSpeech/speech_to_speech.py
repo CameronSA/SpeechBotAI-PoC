@@ -58,23 +58,22 @@ def stream_microphone_input():
         last_input_time = time.time()
 
         while True:
-            time.sleep(0.1)
-            with buffer_lock:
-                if receiving_input:
-                    # Check if silence lasted for 1 seconds
-                    if time.time() - last_input_time > 1:
-                        print("Silence detected. Transcribing...")
-                        transcribe(transcribe_buffer)
-                        transcribe_buffer.clear()
-                        receiving_input = False
-                        continue
+            if receiving_input:
+                # Check if silence lasted for 1 seconds
+                if time.time() - last_input_time > 1:
+                    print("Silence detected. Transcribing...")
+                    transcribe(transcribe_buffer)
+                    transcribe_buffer.clear()
+                    receiving_input = False
+                    continue
 
-                # If audio is loud enough, treat as speech
-                if speech_detected():
-                    transcribe_buffer.extend(audio_buffer)
-                    receiving_input = True
-                    last_input_time = time.time()
-                    print("Speech detected")
+            # If audio is loud enough, treat as speech
+            if speech_detected():
+                transcribe_buffer.extend(audio_buffer)
+                receiving_input = True
+                last_input_time = time.time()
+                print("Speech detected")
+                with buffer_lock:
                     audio_buffer.clear()
 
 
