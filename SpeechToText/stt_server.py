@@ -1,6 +1,5 @@
 from faster_whisper import WhisperModel
 from fastapi import FastAPI, File, UploadFile
-import uvicorn
 
 app = FastAPI()
 model = WhisperModel(

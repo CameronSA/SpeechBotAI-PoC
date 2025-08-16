@@ -111,3 +111,5 @@ dmypy.json
 *.temp
 
 *.wav
+*.onnx
+*.onnx.json

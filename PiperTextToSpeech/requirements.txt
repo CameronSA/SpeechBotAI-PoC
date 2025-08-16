@@ -1,0 +1,4 @@
+piper-tts
+onnxruntime-gpu
+sounddevice
+numpy
